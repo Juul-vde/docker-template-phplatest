@@ -1,5 +1,5 @@
-# Docker template for PHP projects
-This repository provides a starting template for PHP application development.
+# Docker FoodPrepper for Web Development 1
+This repository provides a starting web application regarding meal prepping.
 
 It contains:
 * NGINX webserver
