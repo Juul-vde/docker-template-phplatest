@@ -28,8 +28,11 @@ CREATE TABLE IF NOT EXISTS categories (
     name VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
     icon VARCHAR(255),
+    color VARCHAR(50) DEFAULT '#6c757d',
+    display_order INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX (display_order)
 );
 
 -- ===========================
@@ -75,6 +78,19 @@ CREATE TABLE IF NOT EXISTS recipe_tags (
     PRIMARY KEY (recipe_id, tag_id),
     FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE,
     FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+);
+
+-- ===========================
+-- RECIPE_CATEGORIES JUNCTION TABLE
+-- ===========================
+-- This junction table implements the many-to-many relationship
+-- A recipe can have multiple categories, and categories are reusable across recipes
+CREATE TABLE IF NOT EXISTS recipe_categories (
+    recipe_id INT NOT NULL,
+    category_id INT NOT NULL,
+    PRIMARY KEY (recipe_id, category_id),
+    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
 );
 
 -- ===========================
@@ -272,29 +288,29 @@ INSERT INTO ingredients (name, calories, protein, carbs, fat) VALUES
 -- ===========================
 -- Note: This data has been AI-generated for testing purposes
 
-INSERT INTO categories (name, description, icon) VALUES
--- Meal Type
-('Breakfast', 'Meals suitable for breakfast', 'breakfast'),
-('Lunch', 'Midday meals, light but nutritious', 'lunch'),
-('Dinner', 'Full warm meals for the evening', 'dinner'),
-('Snack', 'Small meals or snacks', 'snack'),
+INSERT INTO categories (name, description, icon, color, display_order) VALUES
+-- Meal Type (Order 1-4)
+('Breakfast', 'Meals suitable for breakfast', '☀️', '#FFB347', 1),
+('Lunch', 'Midday meals, light but nutritious', '🌞', '#87CEEB', 2),
+('Dinner', 'Full warm meals for the evening', '🌙', '#9B59B6', 3),
+('Snack', 'Small meals or snacks', '🍎', '#FF69B4', 4),
 
--- Diet Type
-('Vegetarian', 'Meals without meat or fish', 'leaf'),
-('Vegan', 'Fully plant-based meals', 'plant'),
-('Fish', 'Meals with fish or seafood', 'fish'),
-('Meat', 'Meals with meat', 'meat'),
+-- Diet Type (Order 5-8)
+('Vegetarian', 'Meals without meat or fish', '🥬', '#28A745', 5),
+('Vegan', 'Fully plant-based meals', '🌱', '#20C997', 6),
+('Fish', 'Meals with fish or seafood', '🐟', '#17A2B8', 7),
+('Meat', 'Meals with meat', '🥩', '#DC3545', 8),
 
--- Macro Focus
-('High Protein', 'Meals with high protein content', 'protein'),
-('Low Carb', 'Meals with few carbohydrates', 'low-carb'),
-('High Carb', 'Meals with many carbohydrates', 'carbs'),
+-- Macro Focus (Order 9-11)
+('High Protein', 'Meals with high protein content', '💪', '#FD7E14', 9),
+('Low Carb', 'Meals with few carbohydrates', '🥗', '#6C757D', 10),
+('High Carb', 'Meals with many carbohydrates', '🍝', '#FFC107', 11),
 
--- General Categories
-('Healthy', 'Balanced meals for daily use', 'healthy'),
-('Comfort Food', 'Rich and filling meals', 'comfort'),
-('Quick Meal', 'Meals that are quick to prepare', 'fast'),
-('Meal Prep', 'Meals suitable for advance preparation', 'meal-prep');
+-- General Categories (Order 12-15)
+('Healthy', 'Balanced meals for daily use', '💚', '#28A745', 12),
+('Comfort Food', 'Rich and filling meals', '🍲', '#6F4E37', 13),
+('Quick Meal', 'Meals that are quick to prepare', '⚡', '#007BFF', 14),
+('Meal Prep', 'Meals suitable for advance preparation', '📦', '#6610F2', 15);
 
 -- ===========================
 -- SAMPLE DATA - TAGS
@@ -607,3 +623,46 @@ INSERT INTO recipe_tags (recipe_id, tag_id) VALUES
 (15, 16), (15, 12), (15, 47),                  -- Fruit Mix: Snack, Healthy, Energy Boost
 (15, 11), (16, 10), (16, 8),                   -- Boiled Egg: Snack, High Protein, Keto
 (17, 16), (17, 1), (17, 37);                   -- Hummus with Carrot: Snack, Vegetarian, Budget-friendly
+
+-- ===========================
+-- SAMPLE DATA - RECIPE CATEGORIES
+-- ===========================
+-- Category IDs: Breakfast=1, Lunch=2, Dinner=3, Snack=4, Vegetarian=5, Vegan=6, 
+--               Fish=7, Meat=8, High Protein=9, Low Carb=10, High Carb=11,
+--               Healthy=12, Comfort Food=13, Quick Meal=14, Meal Prep=15
+
+INSERT INTO recipe_categories (recipe_id, category_id) VALUES
+
+-- ===========================
+-- BREAKFAST RECIPES
+-- ===========================
+(1, 1), (1, 5), (1, 12), (1, 14),              -- Oatmeal: Breakfast, Vegetarian, Healthy, Quick
+(2, 1), (2, 5), (2, 9), (2, 12), (2, 14),      -- Yogurt: Breakfast, Vegetarian, High Protein, Healthy, Quick
+(3, 1), (3, 5), (3, 9), (3, 14),               -- Omelet: Breakfast, Vegetarian, High Protein, Quick
+(4, 1), (4, 6), (4, 12), (4, 14),              -- Avocado Toast: Breakfast, Vegan, Healthy, Quick
+(5, 1), (5, 6), (5, 12), (5, 14),              -- Smoothie Bowl: Breakfast, Vegan, Healthy, Quick
+
+-- ===========================
+-- LUNCH RECIPES
+-- ===========================
+(6, 2), (6, 8), (6, 9), (6, 10), (6, 12),      -- Chicken Salad: Lunch, Meat, High Protein, Low Carb, Healthy
+(7, 2), (7, 5), (7, 11), (7, 14),              -- Pasta Pesto: Lunch, Vegetarian, High Carb, Quick
+(8, 2), (8, 6), (8, 12), (8, 14),              -- Wrap Hummus: Lunch, Vegan, Healthy, Quick
+(9, 2), (9, 5), (9, 12), (9, 15),              -- Tomato Soup: Lunch, Vegetarian, Healthy, Meal Prep
+
+-- ===========================
+-- DINNER RECIPES
+-- ===========================
+(10, 3), (10, 8), (10, 11), (10, 13),          -- Spaghetti Bolognese: Dinner, Meat, High Carb, Comfort
+(11, 3), (11, 7), (11, 9), (11, 12),           -- Salmon: Dinner, Fish, High Protein, Healthy
+(12, 3), (12, 5), (12, 12), (12, 15),          -- Vegetarian Curry: Dinner, Vegetarian, Healthy, Meal Prep
+(13, 3), (13, 8), (13, 9), (13, 14),           -- Chicken Stir-fry: Dinner, Meat, High Protein, Quick
+(14, 3), (14, 8), (14, 13), (14, 15),          -- Lasagne: Dinner, Meat, Comfort, Meal Prep
+
+-- ===========================
+-- SNACK RECIPES
+-- ===========================
+(15, 4), (15, 6), (15, 12), (15, 14),          -- Fruit Mix: Snack, Vegan, Healthy, Quick
+(16, 4), (16, 5), (16, 9), (16, 10), (16, 14),-- Boiled Egg: Snack, Vegetarian, High Protein, Low Carb, Quick
+(17, 4), (17, 6), (17, 12), (17, 14);          -- Hummus Carrot: Snack, Vegan, Healthy, Quick
+

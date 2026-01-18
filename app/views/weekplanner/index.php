@@ -23,9 +23,8 @@ ob_start();
                     <h5>Week of <?php echo htmlspecialchars($weeklyPlan['week_start_date'] ?? ''); ?></h5>
                 </div>
                 <div class="card-body">
-                    <p>Servings: <?php echo htmlspecialchars($weeklyPlan['servings_count'] ?? 1); ?></p>
                     <a href="/weekplanner/addmeal" class="btn btn-success">Add Meal</a>
-                    <a href="/shoppinglist/generate?plan_id=<?php echo $weeklyPlan['id']; ?>" class="btn btn-info">Generate Shopping List</a>
+                    <a href="/shoppinglist/index" class="btn btn-info">Generate Shopping List</a>
                 </div>
             </div>
         </div>

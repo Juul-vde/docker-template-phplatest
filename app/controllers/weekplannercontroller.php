@@ -138,32 +138,14 @@ class weekplannercontroller
             try {
                 $search = $_GET['search'] ?? '';
                 $categoryId = $_GET['category'] ?? null;
-                $tagId = $_GET['tag'] ?? null;
 
                 // Start with all recipes
                 $recipes = $this->recipeService->getAllRecipes();
 
-                // Apply filters in order: tag first (database), then category, then search (client-side)
-                if ($tagId) {
-                    // Use database query for tag filtering
-                    $recipes = $this->recipeService->searchByTag($tagId);
-                    
-                    // Add category names to tag-filtered recipes
-                    $allRecipes = $this->recipeService->getAllRecipes();
-                    $categoryMap = [];
-                    foreach ($allRecipes as $r) {
-                        $categoryMap[$r['id']] = $r['category_name'] ?? null;
-                    }
-                    foreach ($recipes as &$recipe) {
-                        if (isset($categoryMap[$recipe['id']])) {
-                            $recipe['category_name'] = $categoryMap[$recipe['id']];
-                        }
-                    }
-                } elseif ($categoryId) {
-                    // Filter by category
-                    $recipes = array_filter($recipes, function($recipe) use ($categoryId) {
-                        return (int)$recipe['category_id'] === (int)$categoryId;
-                    });
+                // Apply category filter
+                if ($categoryId) {
+                    // Filter by category using new junction table method
+                    $recipes = $this->recipeService->searchByCategory($categoryId);
                 }
 
                 // Filter by search query (applied to already-filtered results)
@@ -176,7 +158,6 @@ class weekplannercontroller
                 }
 
                 $categories = $this->categoryService->getAllCategories();
-                $tags = $this->tagService->getAllTags();
 
                 include __DIR__ . '/../views/weekplanner/addmeal.php';
             } catch (\Exception $e) {
@@ -289,11 +270,8 @@ class weekplannercontroller
                 throw new \Exception("Servings must be between 1 and 20");
             }
 
-            // Update the meal item
-            $this->weeklyPlanService->updateMeal($itemId, null, $mealType, $servings);
-            
-            // Note: updateMeal doesn't update day_of_week in current implementation
-            // If needed, this would require extending the service/repository
+            // Update the meal item (recipe_id stays the same, only update day, meal type, and servings)
+            $this->weeklyPlanService->updateMeal($itemId, $dayOfWeek, $mealType, $servings);
 
             $_SESSION['success'] = "Meal updated successfully";
             header('Location: /weekplanner/index');

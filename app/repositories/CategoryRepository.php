@@ -8,6 +8,13 @@ use PDO;
 class CategoryRepository extends BaseRepository
 {
     protected $table = 'categories';
+    
+    public function findAll()
+    {
+        $sql = "SELECT * FROM {$this->table} ORDER BY display_order ASC, name ASC";
+        $stmt = $this->execute($sql);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
     public function create(Category $category)
     {

@@ -11,11 +11,56 @@ class RecipeRepository extends BaseRepository
 
     public function findAll()
     {
-        $sql = "SELECT r.*, c.name as category_name FROM {$this->table} r 
-                LEFT JOIN categories c ON r.category_id = c.id 
+        $sql = "SELECT r.*, 
+                GROUP_CONCAT(DISTINCT c.id ORDER BY c.display_order) as category_ids,
+                GROUP_CONCAT(DISTINCT c.name ORDER BY c.display_order) as category_names,
+                GROUP_CONCAT(DISTINCT c.icon ORDER BY c.display_order SEPARATOR '|||') as category_icons,
+                GROUP_CONCAT(DISTINCT c.color ORDER BY c.display_order SEPARATOR '|||') as category_colors
+                FROM {$this->table} r 
+                LEFT JOIN recipe_categories rc ON r.id = rc.recipe_id
+                LEFT JOIN categories c ON rc.category_id = c.id 
+                GROUP BY r.id
                 ORDER BY r.title ASC";
         $stmt = $this->execute($sql);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $recipes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Parse the concatenated categories
+        foreach ($recipes as &$recipe) {
+            if ($recipe['category_ids']) {
+                $recipe['categories'] = $this->parseCategories(
+                    $recipe['category_ids'],
+                    $recipe['category_names'],
+                    $recipe['category_icons'],
+                    $recipe['category_colors']
+                );
+            } else {
+                $recipe['categories'] = [];
+            }
+        }
+        
+        return $recipes;
+    }
+    
+    private function parseCategories($ids, $names, $icons, $colors)
+    {
+        if (!$ids) return [];
+        
+        $idArray = explode(',', $ids);
+        $nameArray = explode(',', $names);
+        $iconArray = explode('|||', $icons);
+        $colorArray = explode('|||', $colors);
+        
+        $categories = [];
+        for ($i = 0; $i < count($idArray); $i++) {
+            $categories[] = [
+                'id' => $idArray[$i],
+                'name' => $nameArray[$i] ?? '',
+                'icon' => $iconArray[$i] ?? '',
+                'color' => $colorArray[$i] ?? '#6c757d'
+            ];
+        }
+        
+        return $categories;
     }
 
     public function create(Recipe $recipe)
@@ -60,28 +105,105 @@ class RecipeRepository extends BaseRepository
 
     public function findByCategory($categoryId)
     {
-        $sql = "SELECT * FROM {$this->table} WHERE category_id = :category_id";
+        $sql = "SELECT DISTINCT r.*,
+                GROUP_CONCAT(DISTINCT c.id ORDER BY c.display_order) as category_ids,
+                GROUP_CONCAT(DISTINCT c.name ORDER BY c.display_order) as category_names,
+                GROUP_CONCAT(DISTINCT c.icon ORDER BY c.display_order SEPARATOR '|||') as category_icons,
+                GROUP_CONCAT(DISTINCT c.color ORDER BY c.display_order SEPARATOR '|||') as category_colors
+                FROM {$this->table} r 
+                INNER JOIN recipe_categories rc ON r.id = rc.recipe_id
+                LEFT JOIN recipe_categories rc2 ON r.id = rc2.recipe_id
+                LEFT JOIN categories c ON rc2.category_id = c.id
+                WHERE rc.category_id = :category_id
+                GROUP BY r.id";
         $stmt = $this->execute($sql, [':category_id' => $categoryId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $recipes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Parse the concatenated categories
+        foreach ($recipes as &$recipe) {
+            if ($recipe['category_ids']) {
+                $recipe['categories'] = $this->parseCategories(
+                    $recipe['category_ids'],
+                    $recipe['category_names'],
+                    $recipe['category_icons'],
+                    $recipe['category_colors']
+                );
+            } else {
+                $recipe['categories'] = [];
+            }
+        }
+        
+        return $recipes;
     }
 
     public function findByTag($tagId)
     {
-        $sql = "SELECT DISTINCT r.* FROM {$this->table} r 
-                INNER JOIN recipe_tags rt ON r.id = rt.recipe_id 
-                WHERE rt.tag_id = :tag_id";
+        $sql = "SELECT DISTINCT r.*,
+                GROUP_CONCAT(DISTINCT c.id ORDER BY c.display_order) as category_ids,
+                GROUP_CONCAT(DISTINCT c.name ORDER BY c.display_order) as category_names,
+                GROUP_CONCAT(DISTINCT c.icon ORDER BY c.display_order SEPARATOR '|||') as category_icons,
+                GROUP_CONCAT(DISTINCT c.color ORDER BY c.display_order SEPARATOR '|||') as category_colors
+                FROM {$this->table} r 
+                INNER JOIN recipe_tags rt ON r.id = rt.recipe_id
+                LEFT JOIN recipe_categories rc ON r.id = rc.recipe_id
+                LEFT JOIN categories c ON rc.category_id = c.id
+                WHERE rt.tag_id = :tag_id
+                GROUP BY r.id";
         $stmt = $this->execute($sql, [':tag_id' => $tagId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $recipes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Parse the concatenated categories
+        foreach ($recipes as &$recipe) {
+            if ($recipe['category_ids']) {
+                $recipe['categories'] = $this->parseCategories(
+                    $recipe['category_ids'],
+                    $recipe['category_names'],
+                    $recipe['category_icons'],
+                    $recipe['category_colors']
+                );
+            } else {
+                $recipe['categories'] = [];
+            }
+        }
+        
+        return $recipes;
     }
 
     public function getRecipeWithTags($recipeId)
     {
-        $sql = "SELECT r.*, GROUP_CONCAT(t.name) as tags FROM {$this->table} r 
+        $sql = "SELECT r.*, 
+                GROUP_CONCAT(DISTINCT t.name) as tags,
+                GROUP_CONCAT(DISTINCT c.id ORDER BY c.display_order) as category_ids,
+                GROUP_CONCAT(DISTINCT c.name ORDER BY c.display_order) as category_names,
+                GROUP_CONCAT(DISTINCT c.icon ORDER BY c.display_order SEPARATOR '|||') as category_icons,
+                GROUP_CONCAT(DISTINCT c.color ORDER BY c.display_order SEPARATOR '|||') as category_colors
+                FROM {$this->table} r 
                 LEFT JOIN recipe_tags rt ON r.id = rt.recipe_id 
-                LEFT JOIN tags t ON rt.tag_id = t.id 
+                LEFT JOIN tags t ON rt.tag_id = t.id
+                LEFT JOIN recipe_categories rc ON r.id = rc.recipe_id
+                LEFT JOIN categories c ON rc.category_id = c.id
                 WHERE r.id = :id GROUP BY r.id";
         $stmt = $this->execute($sql, [':id' => $recipeId]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $recipe = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Parse categories
+        if ($recipe && $recipe['category_ids']) {
+            $recipe['categories'] = $this->parseCategories(
+                $recipe['category_ids'],
+                $recipe['category_names'],
+                $recipe['category_icons'],
+                $recipe['category_colors']
+            );
+        } else {
+            $recipe['categories'] = [];
+        }
+        
+        // Parse tags
+        if ($recipe && $recipe['tags']) {
+            $recipe['tags'] = explode(',', $recipe['tags']);
+        }
+        
+        return $recipe;
     }
 
     public function addTag($recipeId, $tagId)
@@ -122,8 +244,51 @@ class RecipeRepository extends BaseRepository
 
     public function search($keyword)
     {
-        $sql = "SELECT * FROM {$this->table} WHERE title LIKE :keyword OR description LIKE :keyword";
+        $sql = "SELECT DISTINCT r.*,
+                GROUP_CONCAT(DISTINCT c.id ORDER BY c.display_order) as category_ids,
+                GROUP_CONCAT(DISTINCT c.name ORDER BY c.display_order) as category_names,
+                GROUP_CONCAT(DISTINCT c.icon ORDER BY c.display_order SEPARATOR '|||') as category_icons,
+                GROUP_CONCAT(DISTINCT c.color ORDER BY c.display_order SEPARATOR '|||') as category_colors
+                FROM {$this->table} r
+                LEFT JOIN recipe_categories rc ON r.id = rc.recipe_id
+                LEFT JOIN categories c ON rc.category_id = c.id
+                WHERE r.title LIKE :keyword OR r.description LIKE :keyword
+                GROUP BY r.id";
         $stmt = $this->execute($sql, [':keyword' => "%$keyword%"]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $recipes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Parse the concatenated categories
+        foreach ($recipes as &$recipe) {
+            if ($recipe['category_ids']) {
+                $recipe['categories'] = $this->parseCategories(
+                    $recipe['category_ids'],
+                    $recipe['category_names'],
+                    $recipe['category_icons'],
+                    $recipe['category_colors']
+                );
+            } else {
+                $recipe['categories'] = [];
+            }
+        }
+        
+        return $recipes;
+    }
+    
+    public function addCategory($recipeId, $categoryId)
+    {
+        $sql = "INSERT IGNORE INTO recipe_categories (recipe_id, category_id) VALUES (:recipe_id, :category_id)";
+        return $this->execute($sql, [':recipe_id' => $recipeId, ':category_id' => $categoryId])->rowCount() > 0;
+    }
+    
+    public function removeCategory($recipeId, $categoryId)
+    {
+        $sql = "DELETE FROM recipe_categories WHERE recipe_id = :recipe_id AND category_id = :category_id";
+        return $this->execute($sql, [':recipe_id' => $recipeId, ':category_id' => $categoryId])->rowCount() > 0;
+    }
+    
+    public function removeAllCategories($recipeId)
+    {
+        $sql = "DELETE FROM recipe_categories WHERE recipe_id = :recipe_id";
+        return $this->execute($sql, [':recipe_id' => $recipeId])->rowCount() > 0;
     }
 }

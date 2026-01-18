@@ -27,11 +27,7 @@ class RecipeService
 
     public function getRecipeById($recipeId)
     {
-        $recipe = $this->recipeRepository->getRecipeWithTags($recipeId);
-        if ($recipe && $recipe['tags']) {
-            $recipe['tags'] = explode(',', $recipe['tags']);
-        }
-        return $recipe;
+        return $this->recipeRepository->getRecipeWithTags($recipeId);
     }
 
     public function searchByTag($tagId)

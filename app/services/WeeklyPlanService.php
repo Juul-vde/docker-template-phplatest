@@ -76,11 +76,11 @@ class WeeklyPlanService
         return $this->weeklyPlanItemRepository->create($item);
     }
 
-    public function updateMeal($itemId, $recipeId, $mealType, $servings)
+    public function updateMeal($itemId, $dayOfWeek, $mealType, $servings)
     {
         $item = new WeeklyPlanItem();
         $item->setId($itemId);
-        $item->setRecipeId($recipeId);
+        $item->setDayOfWeek($dayOfWeek);
         $item->setMealType($mealType);
         $item->setServings($servings);
 

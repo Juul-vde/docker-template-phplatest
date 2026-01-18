@@ -5,18 +5,24 @@ namespace App\Controllers;
 use App\Services\AuthService;
 use App\Services\RecipeService;
 use App\Services\TagService;
+use App\Services\CategoryService;
+use App\Services\WeeklyPlanService;
 
 class recipecontroller
 {
     private $authService;
     private $recipeService;
     private $tagService;
+    private $categoryService;
+    private $weeklyPlanService;
 
     public function __construct()
     {
         $this->authService = new AuthService();
         $this->recipeService = new RecipeService();
         $this->tagService = new TagService();
+        $this->categoryService = new CategoryService();
+        $this->weeklyPlanService = new WeeklyPlanService();
 
         if (!$this->authService->isAuthenticated()) {
             header('Location: /auth/index');
@@ -26,8 +32,28 @@ class recipecontroller
 
     public function index()
     {
+        // Get filter parameters
+        $searchQuery = $_GET['q'] ?? '';
+        $categoryId = $_GET['category'] ?? null;
+
+        // Start with all recipes
         $recipes = $this->recipeService->getAllRecipes();
-        $tags = $this->tagService->getAllTags();
+
+        // Apply category filter first
+        if ($categoryId) {
+            $recipes = $this->recipeService->searchByCategory($categoryId);
+        }
+
+        // Apply search filter to the already-filtered results
+        if ($searchQuery) {
+            $recipes = array_filter($recipes, function($recipe) use ($searchQuery) {
+                $searchLower = strtolower($searchQuery);
+                return strpos(strtolower($recipe['title']), $searchLower) !== false ||
+                       strpos(strtolower($recipe['description']), $searchLower) !== false;
+            });
+        }
+
+        $categories = $this->categoryService->getAllCategories();
 
         include __DIR__ . '/../views/recipes/index.php';
     }
@@ -49,6 +75,21 @@ class recipecontroller
             exit;
         }
 
+        // Check if recipe is already in current week's plan
+        $recipeInWeekplan = null;
+        if (isset($_SESSION['user_id'])) {
+            $userId = $_SESSION['user_id'];
+            $weeklyPlan = $this->weeklyPlanService->getCurrentWeekPlan($userId);
+            
+            if ($weeklyPlan) {
+                $mealsData = $this->weeklyPlanService->getWeekPlanWithMeals($weeklyPlan['id']);
+                // Find meals with this recipe
+                $recipeInWeekplan = array_filter($mealsData, function($meal) use ($recipeId) {
+                    return $meal['recipe_id'] == $recipeId;
+                });
+            }
+        }
+        
         include __DIR__ . '/../views/recipes/view.php';
     }
 

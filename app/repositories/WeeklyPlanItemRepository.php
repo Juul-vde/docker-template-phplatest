@@ -27,11 +27,11 @@ class WeeklyPlanItemRepository extends BaseRepository
 
     public function update(WeeklyPlanItem $item)
     {
-        $sql = "UPDATE {$this->table} SET recipe_id = :recipe_id, meal_type = :meal_type, servings = :servings WHERE id = :id";
+        $sql = "UPDATE {$this->table} SET day_of_week = :day_of_week, meal_type = :meal_type, servings = :servings WHERE id = :id";
         
         return $this->execute($sql, [
             ':id' => $item->getId(),
-            ':recipe_id' => $item->getRecipeId(),
+            ':day_of_week' => $item->getDayOfWeek(),
             ':meal_type' => $item->getMealType(),
             ':servings' => $item->getServings()
         ])->rowCount() > 0;
